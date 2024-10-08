@@ -15,16 +15,16 @@ detect_os() {
     fi
 }
 
-# 安装必要的依赖项
+# 安装必要的依赖项（删除了 iptables）
 install_dependencies() {
     case "$OS" in
         ubuntu|debian|deepin)
             echo "Detected $OS. Using apt for package management."
-            apt update && apt install -y wget curl systemd iptables ;;
+            apt update && apt install -y wget curl systemd ;;
         centos|rhel|fedora|ol)
             echo "Detected $OS. Using yum/dnf for package management."
             yum update -y || dnf update -y
-            yum install -y wget curl systemd iptables ;;
+            yum install -y wget curl systemd firewalld ;;
         *)
             echo "Unsupported OS: $OS"
             exit 1 ;;
