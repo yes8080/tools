@@ -4,12 +4,12 @@ set -euo pipefail
 # chmod +x install-vlmcsd.sh
 # sudo ./install-vlmcsd.sh
 
-
 # 检测系统类型
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
+        VERSION_ID=$VERSION_ID
     else
         echo "Unsupported operating system. Cannot find /etc/os-release."
         exit 1
@@ -22,7 +22,7 @@ install_dependencies() {
         ubuntu|debian|deepin)
             echo "Detected $OS. Using apt for package management."
             apt update && apt install -y wget curl systemd tar ;;
-        centos|rhel|fedora)
+        centos|rhel|fedora|ol)
             echo "Detected $OS. Using yum/dnf for package management."
             yum update -y || dnf update -y
             yum install -y wget curl systemd tar || dnf install -y wget curl systemd tar ;;
@@ -39,7 +39,7 @@ manage_firewall() {
             if command -v ufw &> /dev/null; then
                 ufw disable || echo "UFW is not running or disabled."
             fi ;;
-        centos|rhel|fedora)
+        centos|rhel|fedora|ol)
             if systemctl is-active --quiet firewalld; then
                 systemctl stop firewalld.service
                 systemctl disable firewalld.service
@@ -120,6 +120,8 @@ EOF
 # 主流程
 echo "Detecting operating system..."
 detect_os
+echo "Detected OS: $OS $VERSION_ID"
+
 echo "Installing dependencies..."
 install_dependencies
 echo "Managing firewall..."
@@ -136,3 +138,4 @@ echo "Creating systemd service..."
 create_systemd_service
 
 echo "Installation complete. You may reboot the system if necessary."
+
