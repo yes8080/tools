@@ -88,7 +88,7 @@ setup_logs_and_pid() {
     LOG_DIR="/var/log/vlmcsd"
     mkdir -p "$LOG_DIR"
     chown vlmcsd:vlmcsd "$LOG_DIR"
-    su - vlmcsd -c "touch $LOG_DIR/vlmcsd.pid"
+    su -f vlmcsd -c "touch $LOG_DIR/vlmcsd.pid"
 }
 
 # 创建systemd服务文件
