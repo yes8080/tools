@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # wget https://raw.githubusercontent.com/yes8080/tools/refs/heads/main/install-vlmcsd.sh && chmod +x install-vlmcsd.sh && sudo ./install-vlmcsd.sh
 
 set -euo pipefail
@@ -21,37 +20,34 @@ install_dependencies() {
     case "$OS" in
         ubuntu|debian|deepin)
             echo "Detected $OS. Using apt for package management."
-            apt update && apt install -y wget curl systemd tar ;;
+            apt update && apt install -y wget curl systemd iptables ;;
         centos|rhel|fedora|ol)
             echo "Detected $OS. Using yum/dnf for package management."
             yum update -y || dnf update -y
-            yum install -y wget curl systemd tar firewalld ;;
+            yum install -y wget curl systemd iptables ;;
         *)
             echo "Unsupported OS: $OS"
             exit 1 ;;
     esac
 }
 
-# 管理防火墙，放行1688端口
+# 检测并配置防火墙以放行1688端口
 configure_firewall() {
-    case "$OS" in
-        ubuntu|debian|deepin)
-            if command -v ufw &> /dev/null; then
-                echo "Configuring UFW to allow TCP 1688..."
-                ufw allow 1688/tcp || echo "Failed to configure UFW."
-                ufw reload || echo "Failed to reload UFW."
-            fi ;;
-        centos|rhel|fedora|ol)
-            if systemctl is-active --quiet firewalld; then
-                echo "Configuring firewalld to allow TCP 1688..."
-                firewall-cmd --permanent --add-port=1688/tcp
-                firewall-cmd --reload
-            else
-                echo "firewalld is not running. Skipping firewall configuration."
-            fi ;;
-        *)
-            echo "Unsupported OS for firewall management: $OS" ;;
-    esac
+    if command -v iptables &> /dev/null && iptables -L &> /dev/null; then
+        echo "Using iptables to open TCP port 1688."
+        iptables -C INPUT -p tcp --dport 1688 -j ACCEPT 2>/dev/null || iptables -A INPUT -p tcp --dport 1688 -j ACCEPT
+        iptables-save > /etc/iptables/rules.v4 || echo "iptables rules saved."
+    elif systemctl is-active --quiet firewalld; then
+        echo "Using firewalld to open TCP port 1688."
+        firewall-cmd --permanent --add-port=1688/tcp
+        firewall-cmd --reload
+    elif command -v ufw &> /dev/null; then
+        echo "Using ufw to open TCP port 1688."
+        ufw allow 1688/tcp
+        ufw reload
+    else
+        echo "No supported firewall detected. Please manually configure firewall to open TCP port 1688."
+    fi
 }
 
 # 设置时区为亚洲/上海
@@ -92,7 +88,7 @@ setup_logs_and_pid() {
     LOG_DIR="/var/log/vlmcsd"
     mkdir -p "$LOG_DIR"
     chown vlmcsd:vlmcsd "$LOG_DIR"
-    su -f vlmcsd -c "touch $LOG_DIR/vlmcsd.pid"
+    su - vlmcsd -c "touch $LOG_DIR/vlmcsd.pid"
 }
 
 # 创建systemd服务文件
@@ -127,7 +123,7 @@ echo "Detected OS: $OS $VERSION_ID"
 
 echo "Installing dependencies..."
 install_dependencies
-echo "Configuring firewall to allow TCP 1688..."
+echo "Configuring firewall..."
 configure_firewall
 echo "Setting timezone..."
 set_timezone
