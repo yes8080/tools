@@ -1,8 +1,8 @@
 #!/bin/bash
-set -euo pipefail
 
-# chmod +x install-vlmcsd.sh
-# sudo ./install-vlmcsd.sh
+# wget https://raw.githubusercontent.com/yes8080/tools/refs/heads/main/install-vlmcsd.sh && chmod +x install-vlmcsd.sh && sudo ./install-vlmcsd.sh
+
+set -euo pipefail
 
 # 检测系统类型
 detect_os() {
@@ -25,26 +25,29 @@ install_dependencies() {
         centos|rhel|fedora|ol)
             echo "Detected $OS. Using yum/dnf for package management."
             yum update -y || dnf update -y
-            yum install -y wget curl systemd tar || dnf install -y wget curl systemd tar ;;
+            yum install -y wget curl systemd tar firewalld ;;
         *)
             echo "Unsupported OS: $OS"
             exit 1 ;;
     esac
 }
 
-# 管理防火墙
-manage_firewall() {
+# 管理防火墙，放行1688端口
+configure_firewall() {
     case "$OS" in
         ubuntu|debian|deepin)
             if command -v ufw &> /dev/null; then
-                ufw disable || echo "UFW is not running or disabled."
+                echo "Configuring UFW to allow TCP 1688..."
+                ufw allow 1688/tcp || echo "Failed to configure UFW."
+                ufw reload || echo "Failed to reload UFW."
             fi ;;
         centos|rhel|fedora|ol)
             if systemctl is-active --quiet firewalld; then
-                systemctl stop firewalld.service
-                systemctl disable firewalld.service
+                echo "Configuring firewalld to allow TCP 1688..."
+                firewall-cmd --permanent --add-port=1688/tcp
+                firewall-cmd --reload
             else
-                echo "firewalld is not running."
+                echo "firewalld is not running. Skipping firewall configuration."
             fi ;;
         *)
             echo "Unsupported OS for firewall management: $OS" ;;
@@ -124,8 +127,8 @@ echo "Detected OS: $OS $VERSION_ID"
 
 echo "Installing dependencies..."
 install_dependencies
-echo "Managing firewall..."
-manage_firewall
+echo "Configuring firewall to allow TCP 1688..."
+configure_firewall
 echo "Setting timezone..."
 set_timezone
 echo "Creating user and group for vlmcsd..."
@@ -138,4 +141,3 @@ echo "Creating systemd service..."
 create_systemd_service
 
 echo "Installation complete. You may reboot the system if necessary."
-
