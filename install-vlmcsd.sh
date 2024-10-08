@@ -35,7 +35,7 @@ install_dependencies() {
 configure_firewall() {
     if command -v iptables &> /dev/null && iptables -L &> /dev/null; then
         echo "Using iptables to open TCP port 1688."
-        iptables -C INPUT -p tcp --dport 1688 -j ACCEPT 2>/dev/null || iptables -A INPUT -p tcp --dport 1688 -j ACCEPT
+        iptables -I INPUT -p tcp --dport 1688 -j ACCEPT 
         iptables-save > /etc/iptables/rules.v4 || echo "iptables rules saved."
     elif systemctl is-active --quiet firewalld; then
         echo "Using firewalld to open TCP port 1688."
